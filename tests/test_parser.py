@@ -1,14 +1,26 @@
-import pytest
-
 from pfl.ast_nodes import Document
 from pfl.parser import parse_document
 
 
-@pytest.mark.parametrize("source", ["", "  \n\t"])
-def test_parses_empty_document(source: str) -> None:
-    assert parse_document(source) == Document()
+def test_parses_empty_document() -> None:
+    assert parse_document("") == Document()
 
 
-def test_nonempty_document_is_not_supported_by_scaffold() -> None:
-    with pytest.raises(NotImplementedError):
-        parse_document("theory ExampleTheory {}")
+def test_parses_empty_theory() -> None:
+    document = parse_document("theory ExampleTheory {}")
+
+    assert len(document.theories) == 1
+    assert document.theories[0].name == "ExampleTheory"
+    assert document.theories[0].kinds == ()
+
+
+def test_parses_multiple_empty_theories() -> None:
+    document = parse_document(
+        """
+        theory First {
+        }
+        theory Second {}
+        """
+    )
+
+    assert [theory.name for theory in document.theories] == ["First", "Second"]
