@@ -24,3 +24,19 @@ def test_parses_multiple_empty_theories() -> None:
     )
 
     assert [theory.name for theory in document.theories] == ["First", "Second"]
+
+
+def test_parses_multiple_kind_declarations() -> None:
+    document = parse_document(
+        """
+        theory ExampleTheory {
+            kind Subject
+            kind Option
+        }
+        """
+    )
+
+    assert [kind.name for kind in document.theories[0].kinds] == [
+        "Subject",
+        "Option",
+    ]

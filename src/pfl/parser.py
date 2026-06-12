@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import re
 
-from pfl.ast_nodes import Document, TheoryDecl
+from pfl.ast_nodes import Document, KindDecl, TheoryDecl
 
 
 _TOKEN_PATTERN = re.compile(
@@ -50,8 +50,15 @@ class _Parser:
         self.expect_value("theory")
         name = self.expect_kind("identifier").value
         self.expect_value("{")
+        kinds: list[KindDecl] = []
+        while self.current_token().value != "}":
+            kinds.append(self.parse_kind())
         self.expect_value("}")
-        return TheoryDecl(name)
+        return TheoryDecl(name, kinds=tuple(kinds))
+
+    def parse_kind(self) -> KindDecl:
+        self.expect_value("kind")
+        return KindDecl(self.expect_kind("identifier").value)
 
     @property
     def at_end(self) -> bool:
