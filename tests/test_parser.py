@@ -60,3 +60,18 @@ def test_parses_posit_signature_arguments_in_order() -> None:
         ("option", "Option"),
     ]
     assert posit.reads is None
+
+
+def test_parses_optional_reads_template_exactly() -> None:
+    document = parse_document(
+        """
+        theory ExampleTheory {
+            kind Subject
+            kind Option
+            posit chooses(actor: Subject, option: Option)
+                reads "{actor} chooses {option}"
+        }
+        """
+    )
+
+    assert document.theories[0].posits[0].reads == "{actor} chooses {option}"

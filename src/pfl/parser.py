@@ -1,5 +1,6 @@
 """Parser entrypoint for PFL source text."""
 
+import ast
 from dataclasses import dataclass
 import re
 
@@ -80,7 +81,16 @@ class _Parser:
                 args.append(self.parse_arg_decl())
 
         self.expect_value(")")
-        return PositDecl(name, tuple(args))
+        reads = self.parse_reads() if self.current_token().value == "reads" else None
+        return PositDecl(name, tuple(args), reads)
+
+    def parse_reads(self) -> str:
+        self.expect_value("reads")
+        token = self.expect_kind("string")
+        value = ast.literal_eval(token.value)
+        if not isinstance(value, str):
+            raise AssertionError("String token did not evaluate to a string")
+        return value
 
     def parse_arg_decl(self) -> ArgDecl:
         name = self.expect_kind("identifier").value
