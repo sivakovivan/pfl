@@ -40,3 +40,23 @@ def test_parses_multiple_kind_declarations() -> None:
         "Subject",
         "Option",
     ]
+
+
+def test_parses_posit_signature_arguments_in_order() -> None:
+    document = parse_document(
+        """
+        theory ExampleTheory {
+            kind Subject
+            kind Option
+            posit chooses(actor: Subject, option: Option)
+        }
+        """
+    )
+
+    posit = document.theories[0].posits[0]
+    assert posit.name == "chooses"
+    assert [(arg.name, arg.kind) for arg in posit.args] == [
+        ("actor", "Subject"),
+        ("option", "Option"),
+    ]
+    assert posit.reads is None

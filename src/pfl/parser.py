@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import re
 
-from pfl.ast_nodes import Document, KindDecl, TheoryDecl
+from pfl.ast_nodes import ArgDecl, Document, KindDecl, PositDecl, TheoryDecl
 
 
 _TOKEN_PATTERN = re.compile(
@@ -51,14 +51,42 @@ class _Parser:
         name = self.expect_kind("identifier").value
         self.expect_value("{")
         kinds: list[KindDecl] = []
+        posits: list[PositDecl] = []
         while self.current_token().value != "}":
-            kinds.append(self.parse_kind())
+            if self.current_token().value == "kind":
+                kinds.append(self.parse_kind())
+            elif self.current_token().value == "posit":
+                posits.append(self.parse_posit())
+            else:
+                token = self.current_token()
+                raise ValueError(f"Unexpected theory declaration {token.value!r}")
         self.expect_value("}")
-        return TheoryDecl(name, kinds=tuple(kinds))
+        return TheoryDecl(name, kinds=tuple(kinds), posits=tuple(posits))
 
     def parse_kind(self) -> KindDecl:
         self.expect_value("kind")
         return KindDecl(self.expect_kind("identifier").value)
+
+    def parse_posit(self) -> PositDecl:
+        self.expect_value("posit")
+        name = self.expect_kind("identifier").value
+        self.expect_value("(")
+
+        args: list[ArgDecl] = []
+        if self.current_token().value != ")":
+            args.append(self.parse_arg_decl())
+            while self.current_token().value == ",":
+                self.expect_value(",")
+                args.append(self.parse_arg_decl())
+
+        self.expect_value(")")
+        return PositDecl(name, tuple(args))
+
+    def parse_arg_decl(self) -> ArgDecl:
+        name = self.expect_kind("identifier").value
+        self.expect_value(":")
+        kind = self.expect_kind("identifier").value
+        return ArgDecl(name, kind)
 
     @property
     def at_end(self) -> bool:
