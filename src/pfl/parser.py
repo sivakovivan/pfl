@@ -4,7 +4,14 @@ import ast
 from dataclasses import dataclass
 import re
 
-from pfl.ast_nodes import ArgDecl, Document, KindDecl, PositDecl, TheoryDecl
+from pfl.ast_nodes import (
+    ArgDecl,
+    Document,
+    KindDecl,
+    PositDecl,
+    PredicateCall,
+    TheoryDecl,
+)
 
 
 _TOKEN_PATTERN = re.compile(
@@ -98,6 +105,20 @@ class _Parser:
         kind = self.expect_kind("identifier").value
         return ArgDecl(name, kind)
 
+    def parse_predicate_call(self) -> PredicateCall:
+        name = self.expect_kind("identifier").value
+        self.expect_value("(")
+
+        args: list[str] = []
+        if self.current_token().value != ")":
+            args.append(self.expect_kind("identifier").value)
+            while self.current_token().value == ",":
+                self.expect_value(",")
+                args.append(self.expect_kind("identifier").value)
+
+        self.expect_value(")")
+        return PredicateCall(name, tuple(args))
+
     @property
     def at_end(self) -> bool:
         return self.position == len(self.tokens)
@@ -126,3 +147,13 @@ def parse_document(source: str) -> Document:
     """Parse PFL source into a document AST."""
 
     return _Parser(_tokenize(source)).parse_document()
+
+
+def parse_predicate_call(source: str) -> PredicateCall:
+    """Parse one canonical predicate call."""
+
+    parser = _Parser(_tokenize(source))
+    predicate = parser.parse_predicate_call()
+    if not parser.at_end:
+        raise ValueError(f"Unexpected token {parser.current_token().value!r}")
+    return predicate

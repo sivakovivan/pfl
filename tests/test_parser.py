@@ -1,5 +1,5 @@
 from pfl.ast_nodes import Document
-from pfl.parser import parse_document
+from pfl.parser import parse_document, parse_predicate_call
 
 
 def test_parses_empty_document() -> None:
@@ -75,3 +75,10 @@ def test_parses_optional_reads_template_exactly() -> None:
     )
 
     assert document.theories[0].posits[0].reads == "{actor} chooses {option}"
+
+
+def test_parses_canonical_predicate_call() -> None:
+    predicate = parse_predicate_call("prefers(actor, option)")
+
+    assert predicate.name == "prefers"
+    assert predicate.args == ("actor", "option")
