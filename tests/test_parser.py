@@ -82,3 +82,29 @@ def test_parses_canonical_predicate_call() -> None:
 
     assert predicate.name == "prefers"
     assert predicate.args == ("actor", "option")
+
+
+def test_parses_derive_with_canonical_body() -> None:
+    document = parse_document(
+        """
+        theory ExampleTheory {
+            kind Subject
+            kind Option
+
+            derive favourable_outcome(actor: Subject, option: Option):
+                prefers(actor, option)
+                chooses(actor, option)
+        }
+        """
+    )
+
+    derive = document.theories[0].derives[0]
+    assert derive.name == "favourable_outcome"
+    assert [(arg.name, arg.kind) for arg in derive.args] == [
+        ("actor", "Subject"),
+        ("option", "Option"),
+    ]
+    assert [(predicate.name, predicate.args) for predicate in derive.body] == [
+        ("prefers", ("actor", "option")),
+        ("chooses", ("actor", "option")),
+    ]

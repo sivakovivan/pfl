@@ -6,6 +6,7 @@ import re
 
 from pfl.ast_nodes import (
     ArgDecl,
+    DeriveDecl,
     Document,
     KindDecl,
     PositDecl,
@@ -60,16 +61,24 @@ class _Parser:
         self.expect_value("{")
         kinds: list[KindDecl] = []
         posits: list[PositDecl] = []
+        derives: list[DeriveDecl] = []
         while self.current_token().value != "}":
             if self.current_token().value == "kind":
                 kinds.append(self.parse_kind())
             elif self.current_token().value == "posit":
                 posits.append(self.parse_posit())
+            elif self.current_token().value == "derive":
+                derives.append(self.parse_derive())
             else:
                 token = self.current_token()
                 raise ValueError(f"Unexpected theory declaration {token.value!r}")
         self.expect_value("}")
-        return TheoryDecl(name, kinds=tuple(kinds), posits=tuple(posits))
+        return TheoryDecl(
+            name,
+            kinds=tuple(kinds),
+            posits=tuple(posits),
+            derives=tuple(derives),
+        )
 
     def parse_kind(self) -> KindDecl:
         self.expect_value("kind")
@@ -98,6 +107,28 @@ class _Parser:
         if not isinstance(value, str):
             raise AssertionError("String token did not evaluate to a string")
         return value
+
+    def parse_derive(self) -> DeriveDecl:
+        self.expect_value("derive")
+        name = self.expect_kind("identifier").value
+        self.expect_value("(")
+
+        args: list[ArgDecl] = []
+        if self.current_token().value != ")":
+            args.append(self.parse_arg_decl())
+            while self.current_token().value == ",":
+                self.expect_value(",")
+                args.append(self.parse_arg_decl())
+
+        self.expect_value(")")
+        self.expect_value(":")
+
+        body: list[PredicateCall] = []
+        declaration_starters = {"kind", "posit", "derive", "}"}
+        while self.current_token().value not in declaration_starters:
+            body.append(self.parse_predicate_call())
+
+        return DeriveDecl(name, tuple(args), tuple(body))
 
     def parse_arg_decl(self) -> ArgDecl:
         name = self.expect_kind("identifier").value
