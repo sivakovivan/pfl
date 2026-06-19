@@ -108,3 +108,17 @@ def test_parses_derive_with_canonical_body() -> None:
         ("prefers", ("actor", "option")),
         ("chooses", ("actor", "option")),
     ]
+
+
+def test_parses_empty_case_under_theory() -> None:
+    document = parse_document(
+        """
+        theory ExampleTheory {}
+        case SpecificChoiceCase under ExampleTheory {}
+        """
+    )
+
+    assert len(document.cases) == 1
+    assert document.cases[0].name == "SpecificChoiceCase"
+    assert document.cases[0].theory_name == "ExampleTheory"
+    assert document.cases[0].facts == ()

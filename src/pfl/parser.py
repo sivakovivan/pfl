@@ -6,6 +6,7 @@ import re
 
 from pfl.ast_nodes import (
     ArgDecl,
+    CaseDecl,
     DeriveDecl,
     Document,
     KindDecl,
@@ -51,9 +52,16 @@ class _Parser:
 
     def parse_document(self) -> Document:
         theories: list[TheoryDecl] = []
+        cases: list[CaseDecl] = []
         while not self.at_end:
-            theories.append(self.parse_theory())
-        return Document(theories=tuple(theories))
+            if self.current_token().value == "theory":
+                theories.append(self.parse_theory())
+            elif self.current_token().value == "case":
+                cases.append(self.parse_case())
+            else:
+                token = self.current_token()
+                raise ValueError(f"Unexpected top-level declaration {token.value!r}")
+        return Document(theories=tuple(theories), cases=tuple(cases))
 
     def parse_theory(self) -> TheoryDecl:
         self.expect_value("theory")
@@ -83,6 +91,15 @@ class _Parser:
     def parse_kind(self) -> KindDecl:
         self.expect_value("kind")
         return KindDecl(self.expect_kind("identifier").value)
+
+    def parse_case(self) -> CaseDecl:
+        self.expect_value("case")
+        name = self.expect_kind("identifier").value
+        self.expect_value("under")
+        theory_name = self.expect_kind("identifier").value
+        self.expect_value("{")
+        self.expect_value("}")
+        return CaseDecl(name, theory_name)
 
     def parse_posit(self) -> PositDecl:
         self.expect_value("posit")
