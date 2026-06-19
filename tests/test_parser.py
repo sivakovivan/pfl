@@ -122,3 +122,19 @@ def test_parses_empty_case_under_theory() -> None:
     assert document.cases[0].name == "SpecificChoiceCase"
     assert document.cases[0].theory_name == "ExampleTheory"
     assert document.cases[0].facts == ()
+
+
+def test_parses_case_let_declarations() -> None:
+    document = parse_document(
+        """
+        case SpecificChoiceCase under ExampleTheory {
+            let alice: Subject
+            let optionA: Option
+        }
+        """
+    )
+
+    assert [(let.name, let.kind) for let in document.cases[0].lets] == [
+        ("alice", "Subject"),
+        ("optionA", "Option"),
+    ]

@@ -10,6 +10,7 @@ from pfl.ast_nodes import (
     DeriveDecl,
     Document,
     KindDecl,
+    LetDecl,
     PositDecl,
     PredicateCall,
     TheoryDecl,
@@ -98,8 +99,22 @@ class _Parser:
         self.expect_value("under")
         theory_name = self.expect_kind("identifier").value
         self.expect_value("{")
+        lets: list[LetDecl] = []
+        while self.current_token().value != "}":
+            if self.current_token().value == "let":
+                lets.append(self.parse_let())
+            else:
+                token = self.current_token()
+                raise ValueError(f"Unexpected case declaration {token.value!r}")
         self.expect_value("}")
-        return CaseDecl(name, theory_name)
+        return CaseDecl(name, theory_name, lets=tuple(lets))
+
+    def parse_let(self) -> LetDecl:
+        self.expect_value("let")
+        name = self.expect_kind("identifier").value
+        self.expect_value(":")
+        kind = self.expect_kind("identifier").value
+        return LetDecl(name, kind)
 
     def parse_posit(self) -> PositDecl:
         self.expect_value("posit")
