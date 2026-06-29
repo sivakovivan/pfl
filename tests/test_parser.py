@@ -154,3 +154,28 @@ def test_parses_ask_statement() -> None:
     expression = document.cases[0].asks[0].expression
     assert expression.name == "favourable_outcome"
     assert expression.args == ("alice", "optionA")
+
+
+def test_parses_surface_statements_in_derives_and_cases() -> None:
+    document = parse_document(
+        """
+        theory ExampleTheory {
+            derive favourable_outcome(actor: Subject, option: Option):
+                actor prefers option
+                chooses(actor, option)
+        }
+
+        case SpecificChoiceCase under ExampleTheory {
+            alice prefers optionA
+            chooses(alice, optionA)
+        }
+        """
+    )
+
+    derive_body = document.theories[0].derives[0].body
+    assert derive_body[0].text == "actor prefers option"
+    assert derive_body[1].name == "chooses"
+
+    case_facts = document.cases[0].facts
+    assert case_facts[0].text == "alice prefers optionA"
+    assert case_facts[1].name == "chooses"

@@ -10,10 +10,12 @@ from pfl.ast_nodes import (
     CaseDecl,
     DeriveDecl,
     Document,
+    Expression,
     KindDecl,
     LetDecl,
     PositDecl,
     PredicateCall,
+    SurfaceStatement,
     TheoryDecl,
 )
 
@@ -31,19 +33,22 @@ _TOKEN_PATTERN = re.compile(
 class _Token:
     kind: str
     value: str
+    line: int
 
 
 def _tokenize(source: str) -> tuple[_Token, ...]:
     tokens: list[_Token] = []
+    line = 1
     for match in _TOKEN_PATTERN.finditer(source):
         kind = match.lastgroup
         if kind == "whitespace":
+            line += match.group().count("\n")
             continue
         if kind == "invalid":
             raise ValueError(f"Unexpected character {match.group()!r}")
         if kind is None:
             raise AssertionError("Token pattern produced an unclassified match")
-        tokens.append(_Token(kind, match.group()))
+        tokens.append(_Token(kind, match.group(), line))
     return tuple(tokens)
 
 
@@ -101,17 +106,25 @@ class _Parser:
         theory_name = self.expect_kind("identifier").value
         self.expect_value("{")
         lets: list[LetDecl] = []
+        facts: list[Expression] = []
         asks: list[AskDecl] = []
         while self.current_token().value != "}":
             if self.current_token().value == "let":
                 lets.append(self.parse_let())
             elif self.current_token().value == "ask":
                 asks.append(self.parse_ask())
+            elif self.peek_value(1) == "(":
+                facts.append(self.parse_predicate_call())
             else:
-                token = self.current_token()
-                raise ValueError(f"Unexpected case declaration {token.value!r}")
+                facts.append(self.parse_surface_statement())
         self.expect_value("}")
-        return CaseDecl(name, theory_name, lets=tuple(lets), asks=tuple(asks))
+        return CaseDecl(
+            name,
+            theory_name,
+            lets=tuple(lets),
+            facts=tuple(facts),
+            asks=tuple(asks),
+        )
 
     def parse_let(self) -> LetDecl:
         self.expect_value("let")
@@ -163,10 +176,13 @@ class _Parser:
         self.expect_value(")")
         self.expect_value(":")
 
-        body: list[PredicateCall] = []
+        body: list[Expression] = []
         declaration_starters = {"kind", "posit", "derive", "}"}
         while self.current_token().value not in declaration_starters:
-            body.append(self.parse_predicate_call())
+            if self.peek_value(1) == "(":
+                body.append(self.parse_predicate_call())
+            else:
+                body.append(self.parse_surface_statement())
 
         return DeriveDecl(name, tuple(args), tuple(body))
 
@@ -189,6 +205,24 @@ class _Parser:
 
         self.expect_value(")")
         return PredicateCall(name, tuple(args))
+
+    def parse_surface_statement(self) -> SurfaceStatement:
+        line = self.current_token().line
+        parts: list[str] = []
+        while not self.at_end and self.current_token().line == line:
+            if self.current_token().value == "}":
+                break
+            parts.append(self.current_token().value)
+            self.position += 1
+        if not parts:
+            raise ValueError("Expected a readable surface statement")
+        return SurfaceStatement(" ".join(parts))
+
+    def peek_value(self, offset: int) -> str | None:
+        position = self.position + offset
+        if position >= len(self.tokens):
+            return None
+        return self.tokens[position].value
 
     @property
     def at_end(self) -> bool:
