@@ -1,6 +1,14 @@
 import pytest
 
-from pfl.ast_nodes import ArgDecl, DeriveDecl, Document, KindDecl, PositDecl, TheoryDecl
+from pfl.ast_nodes import (
+    ArgDecl,
+    CaseDecl,
+    DeriveDecl,
+    Document,
+    KindDecl,
+    PositDecl,
+    TheoryDecl,
+)
 from pfl.checker import check_document
 from pfl.diagnostics import DiagnosticCode, DiagnosticError
 
@@ -45,3 +53,13 @@ def test_rejects_unknown_kinds_in_term_signatures(theory: TheoryDecl) -> None:
 
     assert raised.value.diagnostic.code is DiagnosticCode.UNKNOWN_KIND
     assert 'Unknown kind "Subject"' in raised.value.diagnostic.message
+
+
+def test_rejects_case_under_unknown_theory() -> None:
+    case = CaseDecl("SpecificChoiceCase", "MissingTheory")
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(cases=(case,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.UNKNOWN_THEORY
+    assert 'unknown theory "MissingTheory"' in raised.value.diagnostic.message
