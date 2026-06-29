@@ -1,6 +1,7 @@
 """Semantic validation for PFL documents."""
 
-from pfl.ast_nodes import ArgDecl, Document
+from pfl.ast_nodes import ArgDecl, CaseDecl, Document, PredicateCall
+from pfl.canonicalize import canonicalize_predicate, resolve_term
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.symbols import SymbolTable, TheorySymbols, build_symbol_table
 
@@ -13,6 +14,7 @@ def check_document(document: Document) -> SymbolTable:
         _check_term_kinds(theory)
     _check_case_theories(document, symbols)
     _check_case_lets(document, symbols)
+    _check_case_facts(document, symbols)
     return symbols
 
 
@@ -52,6 +54,44 @@ def _check_case_lets(document: Document, symbols: SymbolTable) -> None:
                         f'in case "{case.name}".',
                     )
                 )
+
+
+def _check_case_facts(document: Document, symbols: SymbolTable) -> None:
+    for case in document.cases:
+        theory = symbols.theories[case.theory_name]
+        instance_kinds = {let.name: let.kind for let in case.lets}
+        for fact in case.facts:
+            if isinstance(fact, PredicateCall):
+                _check_case_call(fact, case, theory, instance_kinds)
+
+
+def _check_case_call(
+    call: PredicateCall,
+    case: CaseDecl,
+    theory: TheorySymbols,
+    instance_kinds: dict[str, str],
+) -> None:
+    canonicalize_predicate(call, theory)
+    term = resolve_term(theory, call.name)
+    for value, parameter in zip(call.args, term.args, strict=True):
+        received_kind = instance_kinds.get(value)
+        if received_kind is None:
+            raise DiagnosticError(
+                Diagnostic(
+                    DiagnosticCode.TYPE_MISMATCH,
+                    f'Value "{value}" in {call.name} is not declared with '
+                    f'let in case "{case.name}".',
+                )
+            )
+        if received_kind != parameter.kind:
+            raise DiagnosticError(
+                Diagnostic(
+                    DiagnosticCode.TYPE_MISMATCH,
+                    f'Term "{call.name}" expects argument "{parameter.name}" '
+                    f'to have kind "{parameter.kind}", but "{value}" has '
+                    f'kind "{received_kind}".',
+                )
+            )
 
 
 def _check_term_kinds(theory: TheorySymbols) -> None:

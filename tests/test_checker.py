@@ -8,6 +8,7 @@ from pfl.ast_nodes import (
     KindDecl,
     LetDecl,
     PositDecl,
+    PredicateCall,
     TheoryDecl,
 )
 from pfl.checker import check_document
@@ -97,3 +98,51 @@ def test_rejects_duplicate_case_let_name() -> None:
 
     assert raised.value.diagnostic.code is DiagnosticCode.DUPLICATE_TERM
     assert 'Duplicate let declaration "alice"' in raised.value.diagnostic.message
+
+
+def test_accepts_well_typed_canonical_case_fact() -> None:
+    theory = TheoryDecl(
+        "ExampleTheory",
+        kinds=(KindDecl("Subject"), KindDecl("Option")),
+        posits=(
+            PositDecl(
+                "prefers",
+                (ArgDecl("actor", "Subject"), ArgDecl("option", "Option")),
+            ),
+        ),
+    )
+    case = CaseDecl(
+        "SpecificChoiceCase",
+        "ExampleTheory",
+        lets=(LetDecl("alice", "Subject"), LetDecl("optionA", "Option")),
+        facts=(PredicateCall("prefers", ("alice", "optionA")),),
+    )
+
+    check_document(Document(theories=(theory,), cases=(case,)))
+
+
+def test_rejects_wrong_argument_kind_in_canonical_case_fact() -> None:
+    theory = TheoryDecl(
+        "ExampleTheory",
+        kinds=(KindDecl("Subject"), KindDecl("Option")),
+        posits=(
+            PositDecl(
+                "prefers",
+                (ArgDecl("actor", "Subject"), ArgDecl("option", "Option")),
+            ),
+        ),
+    )
+    case = CaseDecl(
+        "SpecificChoiceCase",
+        "ExampleTheory",
+        lets=(LetDecl("alice", "Subject"), LetDecl("bob", "Subject")),
+        facts=(PredicateCall("prefers", ("alice", "bob")),),
+    )
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(theories=(theory,), cases=(case,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.TYPE_MISMATCH
+    assert 'expects argument "option" to have kind "Option"' in (
+        raised.value.diagnostic.message
+    )
