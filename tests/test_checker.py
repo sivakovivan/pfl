@@ -6,6 +6,7 @@ from pfl.ast_nodes import (
     DeriveDecl,
     Document,
     KindDecl,
+    LetDecl,
     PositDecl,
     TheoryDecl,
 )
@@ -63,3 +64,36 @@ def test_rejects_case_under_unknown_theory() -> None:
 
     assert raised.value.diagnostic.code is DiagnosticCode.UNKNOWN_THEORY
     assert 'unknown theory "MissingTheory"' in raised.value.diagnostic.message
+
+
+def test_rejects_unknown_kind_in_case_let() -> None:
+    theory = TheoryDecl("ExampleTheory", kinds=(KindDecl("Subject"),))
+    case = CaseDecl(
+        "SpecificChoiceCase",
+        "ExampleTheory",
+        lets=(LetDecl("optionA", "Option"),),
+    )
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(theories=(theory,), cases=(case,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.UNKNOWN_KIND
+    assert 'instance "optionA"' in raised.value.diagnostic.message
+
+
+def test_rejects_duplicate_case_let_name() -> None:
+    theory = TheoryDecl("ExampleTheory", kinds=(KindDecl("Subject"),))
+    case = CaseDecl(
+        "SpecificChoiceCase",
+        "ExampleTheory",
+        lets=(
+            LetDecl("alice", "Subject"),
+            LetDecl("alice", "Subject"),
+        ),
+    )
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(theories=(theory,), cases=(case,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.DUPLICATE_TERM
+    assert 'Duplicate let declaration "alice"' in raised.value.diagnostic.message
