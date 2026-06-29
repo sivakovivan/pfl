@@ -6,6 +6,7 @@ import re
 
 from pfl.ast_nodes import (
     ArgDecl,
+    AskDecl,
     CaseDecl,
     DeriveDecl,
     Document,
@@ -100,14 +101,17 @@ class _Parser:
         theory_name = self.expect_kind("identifier").value
         self.expect_value("{")
         lets: list[LetDecl] = []
+        asks: list[AskDecl] = []
         while self.current_token().value != "}":
             if self.current_token().value == "let":
                 lets.append(self.parse_let())
+            elif self.current_token().value == "ask":
+                asks.append(self.parse_ask())
             else:
                 token = self.current_token()
                 raise ValueError(f"Unexpected case declaration {token.value!r}")
         self.expect_value("}")
-        return CaseDecl(name, theory_name, lets=tuple(lets))
+        return CaseDecl(name, theory_name, lets=tuple(lets), asks=tuple(asks))
 
     def parse_let(self) -> LetDecl:
         self.expect_value("let")
@@ -115,6 +119,10 @@ class _Parser:
         self.expect_value(":")
         kind = self.expect_kind("identifier").value
         return LetDecl(name, kind)
+
+    def parse_ask(self) -> AskDecl:
+        self.expect_value("ask")
+        return AskDecl(self.parse_predicate_call())
 
     def parse_posit(self) -> PositDecl:
         self.expect_value("posit")

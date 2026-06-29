@@ -138,3 +138,19 @@ def test_parses_case_let_declarations() -> None:
         ("alice", "Subject"),
         ("optionA", "Option"),
     ]
+
+
+def test_parses_ask_statement() -> None:
+    document = parse_document(
+        """
+        case SpecificChoiceCase under ExampleTheory {
+            let alice: Subject
+            let optionA: Option
+            ask favourable_outcome(alice, optionA)
+        }
+        """
+    )
+
+    expression = document.cases[0].asks[0].expression
+    assert expression.name == "favourable_outcome"
+    assert expression.args == ("alice", "optionA")
