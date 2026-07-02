@@ -1,9 +1,12 @@
 """Predicate and rule matching for forward-chaining inference."""
 
 from collections.abc import Mapping, Set
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
-from pfl.ir import Predicate, PredicatePattern
+from pfl.ir import Predicate, PredicatePattern, Rule
+
+if TYPE_CHECKING:
+    from pfl.engine import FactStore
 
 
 Bindings: TypeAlias = dict[str, str]
@@ -32,3 +35,28 @@ def match_predicate(
             return None
         matched[pattern_arg] = value
     return matched
+
+
+def match_rule_body(rule: Rule, facts: "FactStore") -> tuple[Bindings, ...]:
+    """Return every substitution satisfying all predicates in a rule body."""
+
+    variables = {parameter.name for parameter in rule.parameters}
+    candidates: list[Bindings] = [{}]
+
+    for pattern in rule.body:
+        matched_candidates: list[Bindings] = []
+        for bindings in candidates:
+            for fact in facts.facts_for(pattern.name):
+                matched = match_predicate(
+                    pattern,
+                    fact.predicate,
+                    variables,
+                    bindings,
+                )
+                if matched is not None and matched not in matched_candidates:
+                    matched_candidates.append(matched)
+        candidates = matched_candidates
+        if not candidates:
+            break
+
+    return tuple(candidates)
