@@ -179,3 +179,39 @@ def test_rejects_unknown_term_in_ask_statement() -> None:
 
     assert raised.value.diagnostic.code is DiagnosticCode.UNDEFINED_TERM
     assert 'Term "acts" is not defined' in raised.value.diagnostic.message
+
+
+def test_accepts_declared_variables_in_derive_body() -> None:
+    theory = TheoryDecl(
+        "ExampleTheory",
+        kinds=(KindDecl("Subject"),),
+        derives=(
+            DeriveDecl(
+                "acts",
+                (ArgDecl("actor", "Subject"),),
+                (PredicateCall("moves", ("actor",)),),
+            ),
+        ),
+    )
+
+    check_document(Document(theories=(theory,)))
+
+
+def test_rejects_undeclared_variable_in_derive_body() -> None:
+    theory = TheoryDecl(
+        "ExampleTheory",
+        kinds=(KindDecl("Subject"),),
+        derives=(
+            DeriveDecl(
+                "acts",
+                (ArgDecl("actor", "Subject"),),
+                (PredicateCall("moves", ("someone",)),),
+            ),
+        ),
+    )
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(theories=(theory,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.MALFORMED_DERIVE
+    assert 'Variable "someone"' in raised.value.diagnostic.message

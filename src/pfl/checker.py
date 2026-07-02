@@ -12,6 +12,7 @@ def check_document(document: Document) -> SymbolTable:
     symbols = build_symbol_table(document)
     for theory in symbols.theories.values():
         _check_term_kinds(theory)
+        _check_derive_variable_scopes(theory)
     _check_case_theories(document, symbols)
     _check_case_lets(document, symbols)
     _check_case_facts(document, symbols)
@@ -112,6 +113,23 @@ def _check_term_kinds(theory: TheorySymbols) -> None:
     for derive in theory.derives.values():
         for arg in derive.args:
             _require_known_kind(theory, arg, f'derive "{derive.name}"')
+
+
+def _check_derive_variable_scopes(theory: TheorySymbols) -> None:
+    for derive in theory.derives.values():
+        parameters = {arg.name for arg in derive.args}
+        for expression in derive.body:
+            if not isinstance(expression, PredicateCall):
+                continue
+            for variable in expression.args:
+                if variable not in parameters:
+                    raise DiagnosticError(
+                        Diagnostic(
+                            DiagnosticCode.MALFORMED_DERIVE,
+                            f'Variable "{variable}" in derive "{derive.name}" '
+                            "is not declared in its header.",
+                        )
+                    )
 
 
 def _require_known_kind(
