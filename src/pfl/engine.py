@@ -5,7 +5,8 @@ from collections.abc import Iterable, Iterator
 from pfl.ast_nodes import CaseDecl, PredicateCall
 from pfl.canonicalize import canonicalize_predicate
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
-from pfl.ir import Fact, Predicate
+from pfl.ir import Fact, Predicate, PredicatePattern, Rule
+from pfl.matcher import Bindings, match_rule_body
 from pfl.symbols import TheorySymbols
 
 
@@ -57,3 +58,44 @@ def compile_case_facts(case: CaseDecl, theory: TheorySymbols) -> FactStore:
             )
         store.add(Fact(canonicalize_predicate(expression, theory)))
     return store
+
+
+def run_inference(
+    facts: FactStore,
+    rules: Iterable[Rule],
+    *,
+    max_iterations: int = 100,
+) -> FactStore:
+    """Apply rules until the fact store reaches a fixed point."""
+
+    compiled_rules = tuple(rules)
+    for _ in range(max_iterations):
+        added_fact = False
+        for rule in compiled_rules:
+            variables = {parameter.name for parameter in rule.parameters}
+            for bindings in match_rule_body(rule, facts):
+                predicate = _instantiate(rule.head, variables, bindings)
+                added_fact = facts.add(Fact(predicate)) or added_fact
+        if not added_fact:
+            return facts
+
+    raise RuntimeError(
+        f"Inference did not reach a fixed point after {max_iterations} iterations"
+    )
+
+
+def _instantiate(
+    pattern: PredicatePattern,
+    variables: set[str],
+    bindings: Bindings,
+) -> Predicate:
+    args: list[str] = []
+    for arg in pattern.args:
+        if arg not in variables:
+            args.append(arg)
+            continue
+        try:
+            args.append(bindings[arg])
+        except KeyError as error:
+            raise RuntimeError(f'Rule variable "{arg}" is not bound') from error
+    return Predicate(pattern.name, tuple(args))
