@@ -2,6 +2,7 @@ import pytest
 
 from pfl.ast_nodes import (
     ArgDecl,
+    AskDecl,
     CaseDecl,
     DeriveDecl,
     Document,
@@ -146,3 +147,35 @@ def test_rejects_wrong_argument_kind_in_canonical_case_fact() -> None:
     assert 'expects argument "option" to have kind "Option"' in (
         raised.value.diagnostic.message
     )
+
+
+def test_type_checks_canonical_ask_statement() -> None:
+    theory = TheoryDecl(
+        "ExampleTheory",
+        kinds=(KindDecl("Subject"),),
+        posits=(PositDecl("acts", (ArgDecl("actor", "Subject"),)),),
+    )
+    case = CaseDecl(
+        "ActionCase",
+        "ExampleTheory",
+        lets=(LetDecl("alice", "Subject"),),
+        asks=(AskDecl(PredicateCall("acts", ("alice",))),),
+    )
+
+    check_document(Document(theories=(theory,), cases=(case,)))
+
+
+def test_rejects_unknown_term_in_ask_statement() -> None:
+    theory = TheoryDecl("ExampleTheory", kinds=(KindDecl("Subject"),))
+    case = CaseDecl(
+        "ActionCase",
+        "ExampleTheory",
+        lets=(LetDecl("alice", "Subject"),),
+        asks=(AskDecl(PredicateCall("acts", ("alice",))),),
+    )
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(theories=(theory,), cases=(case,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.UNDEFINED_TERM
+    assert 'Term "acts" is not defined' in raised.value.diagnostic.message

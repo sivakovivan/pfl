@@ -15,6 +15,7 @@ def check_document(document: Document) -> SymbolTable:
     _check_case_theories(document, symbols)
     _check_case_lets(document, symbols)
     _check_case_facts(document, symbols)
+    _check_case_asks(document, symbols)
     return symbols
 
 
@@ -63,6 +64,15 @@ def _check_case_facts(document: Document, symbols: SymbolTable) -> None:
         for fact in case.facts:
             if isinstance(fact, PredicateCall):
                 _check_case_call(fact, case, theory, instance_kinds)
+
+
+def _check_case_asks(document: Document, symbols: SymbolTable) -> None:
+    for case in document.cases:
+        theory = symbols.theories[case.theory_name]
+        instance_kinds = {let.name: let.kind for let in case.lets}
+        for ask in case.asks:
+            if isinstance(ask.expression, PredicateCall):
+                _check_case_call(ask.expression, case, theory, instance_kinds)
 
 
 def _check_case_call(
