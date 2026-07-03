@@ -65,8 +65,21 @@ def test_forward_chaining_derives_favourable_outcome() -> None:
 
     run_inference(store, (rule,))
 
-    assert Predicate("favourable_outcome", ("alice", "optionA")) in store
+    conclusion = Predicate("favourable_outcome", ("alice", "optionA"))
+    assert conclusion in store
     assert len(store) == 3
+    derived_fact = store.get(conclusion)
+    assert derived_fact is not None
+    assert derived_fact.derivation is not None
+    assert derived_fact.derivation.rule_name == "favourable_outcome"
+    assert derived_fact.derivation.premises == (
+        Predicate("prefers", ("alice", "optionA")),
+        Predicate("chooses", ("alice", "optionA")),
+    )
+    assert derived_fact.derivation.bindings == (
+        ("actor", "alice"),
+        ("option", "optionA"),
+    )
 
 
 def test_forward_chaining_repeats_until_fixed_point() -> None:

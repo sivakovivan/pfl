@@ -5,7 +5,7 @@ from collections.abc import Iterable, Iterator
 from pfl.ast_nodes import CaseDecl, PredicateCall
 from pfl.canonicalize import canonicalize_predicate
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
-from pfl.ir import Fact, Predicate, PredicatePattern, Rule
+from pfl.ir import Derivation, Fact, Predicate, PredicatePattern, Rule
 from pfl.matcher import Bindings, match_rule_body
 from pfl.symbols import TheorySymbols
 
@@ -42,6 +42,9 @@ class FactStore:
             if fact.predicate.name == predicate_name
         )
 
+    def get(self, predicate: Predicate) -> Fact | None:
+        return self._facts.get(predicate)
+
 
 def compile_case_facts(case: CaseDecl, theory: TheorySymbols) -> FactStore:
     """Compile canonical case facts into a fact store."""
@@ -75,7 +78,17 @@ def run_inference(
             variables = {parameter.name for parameter in rule.parameters}
             for bindings in match_rule_body(rule, facts):
                 predicate = _instantiate(rule.head, variables, bindings)
-                added_fact = facts.add(Fact(predicate)) or added_fact
+                premises = tuple(
+                    _instantiate(pattern, variables, bindings)
+                    for pattern in rule.body
+                )
+                ordered_bindings = tuple(
+                    (parameter.name, bindings[parameter.name])
+                    for parameter in rule.parameters
+                    if parameter.name in bindings
+                )
+                derivation = Derivation(rule.name, premises, ordered_bindings)
+                added_fact = facts.add(Fact(predicate, derivation)) or added_fact
         if not added_fact:
             return facts
 

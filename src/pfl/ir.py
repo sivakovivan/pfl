@@ -42,6 +42,18 @@ class Rule:
 @dataclass(frozen=True)
 class Fact:
     predicate: Predicate
+    derivation: "Derivation | None" = None
 
     def __str__(self) -> str:
         return str(self.predicate)
+
+    @property
+    def is_given(self) -> bool:
+        return self.derivation is None
+
+
+@dataclass(frozen=True)
+class Derivation:
+    rule_name: str
+    premises: tuple[Predicate, ...]
+    bindings: tuple[tuple[str, str], ...]
