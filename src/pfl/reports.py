@@ -21,6 +21,13 @@ class SemanticReport:
     derives: tuple[str, ...]
     cases: tuple[str, ...]
     asks: tuple[str, ...]
+    dependencies: tuple["DerivedDependencies", ...] = ()
+
+
+@dataclass(frozen=True)
+class DerivedDependencies:
+    term_name: str
+    dependencies: tuple[str, ...]
 
 
 def build_semantic_report(document: Document, theory_name: str) -> SemanticReport:
@@ -41,6 +48,19 @@ def build_semantic_report(document: Document, theory_name: str) -> SemanticRepor
             for case in cases
             for ask in case.asks
         ),
+        dependencies=tuple(
+            DerivedDependencies(
+                derive.name,
+                tuple(
+                    dict.fromkeys(
+                        expression.name
+                        for expression in derive.body
+                        if isinstance(expression, PredicateCall)
+                    )
+                ),
+            )
+            for derive in theory.derives
+        ),
     )
 
 
@@ -52,6 +72,7 @@ def format_semantic_report(report: SemanticReport) -> str:
         _format_section("Derived terms", report.derives),
         _format_section("Cases", report.cases),
         _format_section("Ask statements", report.asks),
+        _format_dependencies(report.dependencies),
     ]
     return "\n\n".join(sections)
 
@@ -86,4 +107,20 @@ def _format_section(title: str, values: tuple[str, ...]) -> str:
     lines.extend(f"- {value}" for value in values)
     if not values:
         lines.append("- none")
+    return "\n".join(lines)
+
+
+def _format_dependencies(dependencies: tuple[DerivedDependencies, ...]) -> str:
+    lines = ["Dependencies:"]
+    if not dependencies:
+        lines.append("- none")
+        return "\n".join(lines)
+
+    for derived in dependencies:
+        lines.append(f"- {derived.term_name}")
+        lines.append("  depends on:")
+        if derived.dependencies:
+            lines.extend(f"  - {name}" for name in derived.dependencies)
+        else:
+            lines.append("  - none")
     return "\n".join(lines)

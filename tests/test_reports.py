@@ -43,3 +43,31 @@ def test_builds_basic_semantic_report() -> None:
     assert "- favourable_outcome(actor: Subject, option: Option)" in output
     assert "- SpecificChoiceCase under ExampleTheory" in output
     assert "- favourable_outcome(alice, optionA)" in output
+
+
+def test_reports_derived_term_dependencies() -> None:
+    parameters = (
+        ArgDecl("actor", "Subject"),
+        ArgDecl("option", "Option"),
+    )
+    theory = TheoryDecl(
+        "ExampleTheory",
+        derives=(
+            DeriveDecl(
+                "favourable_outcome",
+                parameters,
+                (
+                    PredicateCall("prefers", ("actor", "option")),
+                    PredicateCall("chooses", ("actor", "option")),
+                ),
+            ),
+        ),
+    )
+
+    report = build_semantic_report(Document(theories=(theory,)), "ExampleTheory")
+    output = format_semantic_report(report)
+
+    assert report.dependencies[0].dependencies == ("prefers", "chooses")
+    assert "- favourable_outcome\n  depends on:" in output
+    assert "  - prefers" in output
+    assert "  - chooses" in output
