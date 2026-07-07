@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import re
 
-from pfl.ast_nodes import PositDecl
+from pfl.ast_nodes import PositDecl, PredicateCall, SurfaceStatement
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.symbols import TheorySymbols
 
@@ -68,6 +68,55 @@ def compile_theory_reads(theory: TheorySymbols) -> tuple[ReadsMatcher, ...]:
         for posit in theory.posits.values()
         if posit.reads is not None
     )
+
+
+def match_reads_template(
+    statement: SurfaceStatement,
+    matcher: ReadsMatcher,
+) -> PredicateCall | None:
+    """Match a readable statement against one compiled template."""
+
+    values = statement.text.split()
+    if len(values) != len(matcher.tokens):
+        return None
+
+    bindings: dict[str, str] = {}
+    for value, token in zip(values, matcher.tokens, strict=True):
+        if not token.is_placeholder:
+            if value != token.value:
+                return None
+            continue
+        existing = bindings.get(token.value)
+        if existing is not None and existing != value:
+            return None
+        bindings[token.value] = value
+
+    return PredicateCall(
+        matcher.term_name,
+        tuple(bindings[name] for name in matcher.argument_names),
+    )
+
+
+def desugar_surface_statement(
+    statement: SurfaceStatement,
+    theory: TheorySymbols,
+) -> PredicateCall:
+    """Resolve a readable statement to a canonical predicate call."""
+
+    matches = [
+        call
+        for matcher in compile_theory_reads(theory)
+        if (call := match_reads_template(statement, matcher)) is not None
+    ]
+    if not matches:
+        raise DiagnosticError(
+            Diagnostic(
+                DiagnosticCode.UNDEFINED_TERM,
+                f'No reads template matches "{statement.text}" under theory '
+                f'"{theory.declaration.name}".',
+            )
+        )
+    return matches[0]
 
 
 def _malformed_reads(posit: PositDecl, detail: str) -> DiagnosticError:
