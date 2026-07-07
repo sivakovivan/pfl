@@ -9,7 +9,12 @@ from pfl.ast_nodes import (
     PredicateCall,
     TheoryDecl,
 )
-from pfl.reports import build_semantic_report, format_semantic_report
+from pfl.diagnostics import DiagnosticCode, Severity
+from pfl.reports import (
+    build_semantic_report,
+    format_semantic_report,
+    semantic_debt_diagnostics,
+)
 
 
 def test_builds_basic_semantic_report() -> None:
@@ -71,3 +76,20 @@ def test_reports_derived_term_dependencies() -> None:
     assert "- favourable_outcome\n  depends on:" in output
     assert "  - prefers" in output
     assert "  - chooses" in output
+
+
+def test_reports_unknown_terms_as_semantic_debt() -> None:
+    derive = DeriveDecl(
+        "satisfied",
+        (ArgDecl("actor", "Subject"),),
+        (PredicateCall("desires", ("actor",)),),
+    )
+    theory = TheoryDecl("ExampleTheory", derives=(derive,))
+
+    report = build_semantic_report(Document(theories=(theory,)), "ExampleTheory")
+    diagnostics = semantic_debt_diagnostics(report)
+
+    assert report.semantic_debt[0].term_name == "desires"
+    assert "- desires (derive \"satisfied\")" in format_semantic_report(report)
+    assert diagnostics[0].code is DiagnosticCode.SEMANTIC_DEBT
+    assert diagnostics[0].severity is Severity.WARNING

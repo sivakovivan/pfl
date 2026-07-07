@@ -4,13 +4,19 @@ from dataclasses import dataclass
 
 from pfl.ast_nodes import (
     ArgDecl,
+    CaseDecl,
     Document,
     Expression,
     PredicateCall,
     SurfaceStatement,
     TheoryDecl,
 )
-from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
+from pfl.diagnostics import (
+    Diagnostic,
+    DiagnosticCode,
+    DiagnosticError,
+    Severity,
+)
 
 
 @dataclass(frozen=True)
@@ -22,6 +28,7 @@ class SemanticReport:
     cases: tuple[str, ...]
     asks: tuple[str, ...]
     dependencies: tuple["DerivedDependencies", ...] = ()
+    semantic_debt: tuple["SemanticDebt", ...] = ()
 
 
 @dataclass(frozen=True)
@@ -30,11 +37,20 @@ class DerivedDependencies:
     dependencies: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class SemanticDebt:
+    term_name: str
+    context: str
+
+
 def build_semantic_report(document: Document, theory_name: str) -> SemanticReport:
     """Collect the declarations and uses associated with one theory."""
 
     theory = _find_theory(document, theory_name)
     cases = tuple(case for case in document.cases if case.theory_name == theory_name)
+    known_terms = {posit.name for posit in theory.posits} | {
+        derive.name for derive in theory.derives
+    }
     return SemanticReport(
         theory_name=theory.name,
         kinds=tuple(kind.name for kind in theory.kinds),
@@ -61,6 +77,7 @@ def build_semantic_report(document: Document, theory_name: str) -> SemanticRepor
             )
             for derive in theory.derives
         ),
+        semantic_debt=_find_semantic_debt(theory, cases, known_terms),
     )
 
 
@@ -73,6 +90,7 @@ def format_semantic_report(report: SemanticReport) -> str:
         _format_section("Cases", report.cases),
         _format_section("Ask statements", report.asks),
         _format_dependencies(report.dependencies),
+        _format_semantic_debt(report.semantic_debt),
     ]
     return "\n\n".join(sections)
 
@@ -123,4 +141,66 @@ def _format_dependencies(dependencies: tuple[DerivedDependencies, ...]) -> str:
             lines.extend(f"  - {name}" for name in derived.dependencies)
         else:
             lines.append("  - none")
+    return "\n".join(lines)
+
+
+def semantic_debt_diagnostics(report: SemanticReport) -> tuple[Diagnostic, ...]:
+    return tuple(
+        Diagnostic(
+            DiagnosticCode.SEMANTIC_DEBT,
+            f'Unknown term "{debt.term_name}" appears in {debt.context}.',
+            Severity.WARNING,
+        )
+        for debt in report.semantic_debt
+    )
+
+
+def _find_semantic_debt(
+    theory: TheoryDecl,
+    cases: tuple[CaseDecl, ...],
+    known_terms: set[str],
+) -> tuple[SemanticDebt, ...]:
+    debt: list[SemanticDebt] = []
+    for derive in theory.derives:
+        for expression in derive.body:
+            _record_unknown(
+                expression,
+                known_terms,
+                f'derive "{derive.name}"',
+                debt,
+            )
+    for case in cases:
+        for expression in case.facts:
+            _record_unknown(
+                expression,
+                known_terms,
+                f'case "{case.name}"',
+                debt,
+            )
+        for ask in case.asks:
+            _record_unknown(
+                ask.expression,
+                known_terms,
+                f'ask in case "{case.name}"',
+                debt,
+            )
+    return tuple(dict.fromkeys(debt))
+
+
+def _record_unknown(
+    expression: Expression,
+    known_terms: set[str],
+    context: str,
+    debt: list[SemanticDebt],
+) -> None:
+    if isinstance(expression, PredicateCall) and expression.name not in known_terms:
+        debt.append(SemanticDebt(expression.name, context))
+
+
+def _format_semantic_debt(debt: tuple[SemanticDebt, ...]) -> str:
+    lines = ["Semantic debt:"]
+    if debt:
+        lines.extend(f"- {item.term_name} ({item.context})" for item in debt)
+    else:
+        lines.append("- none")
     return "\n".join(lines)
