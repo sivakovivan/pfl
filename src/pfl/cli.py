@@ -5,7 +5,8 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 import sys
 
-from pfl.ast_nodes import CaseDecl, Document
+from pfl.ast_nodes import CaseDecl, Document, PredicateCall
+from pfl.canonicalize import canonicalize_predicate
 from pfl.checker import check_document
 from pfl.compiler import compile_theory_rules
 from pfl.diagnostics import DiagnosticError
@@ -42,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
     report = commands.add_parser("report", help="print semantic reports")
     report.add_argument("file", type=Path)
     report.set_defaults(handler=_report_command)
+
+    desugar = commands.add_parser("desugar", help="print canonical PFL forms")
+    desugar.add_argument("file", type=Path)
+    desugar.set_defaults(handler=_desugar_command)
     return parser
 
 
@@ -106,6 +111,35 @@ def _report_command(args: argparse.Namespace) -> int:
             print()
         report = build_semantic_report(document, theory.name)
         print(format_semantic_report(report))
+    return 0
+
+
+def _desugar_command(args: argparse.Namespace) -> int:
+    document, symbols = _load_program(args.file)
+    for index, theory_decl in enumerate(document.theories):
+        if index:
+            print()
+        theory = symbols.theories[theory_decl.name]
+        print(f"Theory: {theory_decl.name}")
+        print("Rules:")
+        rules = compile_theory_rules(theory)
+        _print_names(str(rule) for rule in rules)
+
+        cases = tuple(
+            case for case in document.cases if case.theory_name == theory_decl.name
+        )
+        for case in cases:
+            print(f"\nCase: {case.name}")
+            print("Facts:")
+            facts = compile_case_facts(case, theory)
+            _print_names(str(fact) for fact in facts)
+            print("Asks:")
+            canonical_asks = (
+                canonicalize_predicate(ask.expression, theory)
+                for ask in case.asks
+                if isinstance(ask.expression, PredicateCall)
+            )
+            _print_names(str(ask) for ask in canonical_asks)
     return 0
 
 

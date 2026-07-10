@@ -142,3 +142,35 @@ def test_report_command_prints_theory_structure(
     assert "- acknowledged(actor: Subject)" in output.out
     assert "- acknowledged\n  depends on:\n  - acts" in output.out
     assert "Semantic debt:\n- none" in output.out
+
+
+def test_desugar_command_prints_canonical_rules_and_facts(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    source = tmp_path / "readable.pfl"
+    source.write_text(
+        """
+        theory ActionTheory {
+            kind Subject
+            posit acts(actor: Subject)
+                reads "{actor} acts"
+            derive acknowledged(actor: Subject):
+                actor acts
+        }
+        case ActionCase under ActionTheory {
+            let alice: Subject
+            alice acts
+            ask acknowledged(alice)
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    exit_code = main(["desugar", str(source)])
+
+    output = capsys.readouterr()
+    assert exit_code == 0
+    assert "- acknowledged(actor) :- acts(actor)" in output.out
+    assert "Facts:\n- acts(alice)" in output.out
+    assert "Asks:\n- acknowledged(alice)" in output.out
