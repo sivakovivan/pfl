@@ -1,8 +1,9 @@
 """Semantic validation for PFL documents."""
 
-from pfl.ast_nodes import ArgDecl, CaseDecl, Document, PredicateCall
+from pfl.ast_nodes import ArgDecl, CaseDecl, Document, PredicateCall, SurfaceStatement
 from pfl.canonicalize import canonicalize_predicate, resolve_term
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
+from pfl.desugar import desugar_surface_statement
 from pfl.symbols import SymbolTable, TheorySymbols, build_symbol_table
 
 
@@ -63,6 +64,8 @@ def _check_case_facts(document: Document, symbols: SymbolTable) -> None:
         theory = symbols.theories[case.theory_name]
         instance_kinds = {let.name: let.kind for let in case.lets}
         for fact in case.facts:
+            if isinstance(fact, SurfaceStatement):
+                fact = desugar_surface_statement(fact, theory)
             if isinstance(fact, PredicateCall):
                 _check_case_call(fact, case, theory, instance_kinds)
 
@@ -118,7 +121,11 @@ def _check_term_kinds(theory: TheorySymbols) -> None:
 def _check_derive_variable_scopes(theory: TheorySymbols) -> None:
     for derive in theory.derives.values():
         parameters = {arg.name for arg in derive.args}
+        parameter_kinds = {arg.name: arg.kind for arg in derive.args}
         for expression in derive.body:
+            was_surface = isinstance(expression, SurfaceStatement)
+            if was_surface:
+                expression = desugar_surface_statement(expression, theory)
             if not isinstance(expression, PredicateCall):
                 continue
             for variable in expression.args:
@@ -130,6 +137,23 @@ def _check_derive_variable_scopes(theory: TheorySymbols) -> None:
                             "is not declared in its header.",
                         )
                     )
+            if was_surface:
+                term = resolve_term(theory, expression.name)
+                for variable, argument in zip(
+                    expression.args,
+                    term.args,
+                    strict=True,
+                ):
+                    if parameter_kinds[variable] != argument.kind:
+                        raise DiagnosticError(
+                            Diagnostic(
+                                DiagnosticCode.TYPE_MISMATCH,
+                                f'Variable "{variable}" has kind '
+                                f'"{parameter_kinds[variable]}", but readable '
+                                f'term "{expression.name}" expects '
+                                f'"{argument.kind}".',
+                            )
+                        )
 
 
 def _require_known_kind(

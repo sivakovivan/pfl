@@ -10,6 +10,7 @@ from pfl.ast_nodes import (
     LetDecl,
     PositDecl,
     PredicateCall,
+    SurfaceStatement,
     TheoryDecl,
 )
 from pfl.checker import check_document
@@ -215,3 +216,31 @@ def test_rejects_undeclared_variable_in_derive_body() -> None:
 
     assert raised.value.diagnostic.code is DiagnosticCode.MALFORMED_DERIVE
     assert 'Variable "someone"' in raised.value.diagnostic.message
+
+
+def test_rejects_wrong_argument_kind_in_desugared_case_fact() -> None:
+    theory = TheoryDecl(
+        "ExampleTheory",
+        kinds=(KindDecl("Subject"), KindDecl("Option")),
+        posits=(
+            PositDecl(
+                "prefers",
+                (ArgDecl("actor", "Subject"), ArgDecl("option", "Option")),
+                "{actor} prefers {option}",
+            ),
+        ),
+    )
+    case = CaseDecl(
+        "SpecificChoiceCase",
+        "ExampleTheory",
+        lets=(LetDecl("alice", "Subject"), LetDecl("bob", "Subject")),
+        facts=(SurfaceStatement("alice prefers bob"),),
+    )
+
+    with pytest.raises(DiagnosticError) as raised:
+        check_document(Document(theories=(theory,), cases=(case,)))
+
+    assert raised.value.diagnostic.code is DiagnosticCode.TYPE_MISMATCH
+    assert 'expects argument "option" to have kind "Option"' in (
+        raised.value.diagnostic.message
+    )
