@@ -1,0 +1,24 @@
+theory ExampleTheory {
+    kind Subject
+    kind Option
+
+    posit prefers(actor: Subject, option: Option)
+        reads "{actor} prefers {option}"
+
+    posit chooses(actor: Subject, option: Option)
+        reads "{actor} chooses {option}"
+
+    derive favourable_outcome(actor: Subject, option: Option):
+        actor prefers option
+        actor chooses option
+}
+
+case SpecificChoiceCase under ExampleTheory {
+    let alice: Subject
+    let optionA: Option
+
+    alice prefers optionA
+    alice chooses optionA
+
+    ask favourable_outcome(alice, optionA)
+}
