@@ -83,3 +83,34 @@ def test_run_command_evaluates_true_and_unknown_asks(
     assert "Case: SpecificChoiceCase" in output.out
     assert "ask favourable_outcome(alice, optionA)\nResult: true" in output.out
     assert "ask favourable_outcome(alice, optionB)\nResult: unknown" in output.out
+
+
+def test_explain_command_shows_derivation(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    source = tmp_path / "action.pfl"
+    source.write_text(
+        """
+        theory ActionTheory {
+            kind Subject
+            posit acts(actor: Subject)
+            derive acknowledged(actor: Subject):
+                acts(actor)
+        }
+        case ActionCase under ActionTheory {
+            let alice: Subject
+            acts(alice)
+            ask acknowledged(alice)
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    exit_code = main(["explain", str(source)])
+
+    output = capsys.readouterr()
+    assert exit_code == 0
+    assert "Result: true" in output.out
+    assert "derived by acknowledged" in output.out
+    assert "acts(alice)\n      given in case" in output.out
