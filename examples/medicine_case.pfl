@@ -1,0 +1,67 @@
+theory MinimalPreferenceEthics {
+    kind Subject
+    kind Option
+    kind State
+
+    posit chooses(actor: Subject, option: Option)
+        reads "{actor} chooses {option}"
+
+    posit available_to(option: Option, subject: Subject)
+        reads "{option} is available to {subject}"
+
+    posit realizes(option: Option, state: State)
+        reads "{option} realizes {state}"
+
+    posit prefers(subject: Subject, better: State, worse: State)
+        reads "{subject} prefers {better} over {worse}"
+
+    derive alternative_better_for(
+        P: Subject,
+        A: Option,
+        B: Option,
+        SA: State
+    ):
+        A realizes SA
+        some SB: State where:
+            B realizes SB
+            P prefers SB over SA
+
+    derive option_worse_for(P: Subject, A: Option, B: Option):
+        some SA: State where:
+            alternative_better_for(P, A, B, SA)
+
+    derive avoidable_setback(P: Subject, Actor: Subject, A: Option):
+        Actor chooses A
+        some B: Option where:
+            B is available to Actor
+            option_worse_for(P, A, B)
+
+    derive preference_harm(P: Subject, A: Option):
+        some Actor: Subject where:
+            avoidable_setback(P, Actor, A)
+
+    derive morally_disfavored(A: Option):
+        some P: Subject where:
+            preference_harm(P, A)
+}
+
+case MedicineCase under MinimalPreferenceEthics {
+    let alice: Subject
+    let bob: Subject
+
+    let take_medicine: Option
+    let leave_medicine: Option
+
+    let bob_has_medicine: State
+    let bob_lacks_medicine: State
+
+    alice chooses take_medicine
+    leave_medicine is available to alice
+
+    take_medicine realizes bob_lacks_medicine
+    leave_medicine realizes bob_has_medicine
+
+    bob prefers bob_has_medicine over bob_lacks_medicine
+
+    ask morally_disfavored(take_medicine)
+}
