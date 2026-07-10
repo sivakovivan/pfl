@@ -7,6 +7,7 @@ from pfl.ast_nodes import (
     KindDecl,
     PositDecl,
     PredicateCall,
+    SurfaceStatement,
     TheoryDecl,
 )
 from pfl.diagnostics import DiagnosticCode, Severity
@@ -93,3 +94,22 @@ def test_reports_unknown_terms_as_semantic_debt() -> None:
     assert "- desires (derive \"satisfied\")" in format_semantic_report(report)
     assert diagnostics[0].code is DiagnosticCode.SEMANTIC_DEBT
     assert diagnostics[0].severity is Severity.WARNING
+
+
+def test_reports_dependencies_from_readable_derive_body() -> None:
+    parameter = (ArgDecl("actor", "Subject"),)
+    theory = TheoryDecl(
+        "ActionTheory",
+        posits=(PositDecl("acts", parameter, "{actor} acts"),),
+        derives=(
+            DeriveDecl(
+                "acknowledged",
+                parameter,
+                (SurfaceStatement("actor acts"),),
+            ),
+        ),
+    )
+
+    report = build_semantic_report(Document(theories=(theory,)), "ActionTheory")
+
+    assert report.dependencies[0].dependencies == ("acts",)

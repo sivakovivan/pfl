@@ -18,6 +18,8 @@ from pfl.diagnostics import (
     DiagnosticError,
     Severity,
 )
+from pfl.desugar import desugar_surface_statement
+from pfl.symbols import TheorySymbols, build_symbol_table
 
 
 @dataclass(frozen=True)
@@ -48,6 +50,7 @@ def build_semantic_report(document: Document, theory_name: str) -> SemanticRepor
     """Collect the declarations and uses associated with one theory."""
 
     theory = _find_theory(document, theory_name)
+    theory_symbols = build_symbol_table(document).theories[theory_name]
     cases = tuple(case for case in document.cases if case.theory_name == theory_name)
     known_terms = {posit.name for posit in theory.posits} | {
         derive.name for derive in theory.derives
@@ -72,13 +75,18 @@ def build_semantic_report(document: Document, theory_name: str) -> SemanticRepor
                     dict.fromkeys(
                         call.name
                         for expression in derive.body
-                        for call in _predicate_calls(expression)
+                        for call in _predicate_calls(expression, theory_symbols)
                     )
                 ),
             )
             for derive in theory.derives
         ),
-        semantic_debt=_find_semantic_debt(theory, cases, known_terms),
+        semantic_debt=_find_semantic_debt(
+            theory,
+            cases,
+            known_terms,
+            theory_symbols,
+        ),
     )
 
 
@@ -160,6 +168,7 @@ def _find_semantic_debt(
     theory: TheoryDecl,
     cases: tuple[CaseDecl, ...],
     known_terms: set[str],
+    theory_symbols: TheorySymbols,
 ) -> tuple[SemanticDebt, ...]:
     debt: list[SemanticDebt] = []
     for derive in theory.derives:
@@ -169,6 +178,7 @@ def _find_semantic_debt(
                 known_terms,
                 f'derive "{derive.name}"',
                 debt,
+                theory_symbols,
             )
     for case in cases:
         for expression in case.facts:
@@ -177,6 +187,7 @@ def _find_semantic_debt(
                 known_terms,
                 f'case "{case.name}"',
                 debt,
+                theory_symbols,
             )
         for ask in case.asks:
             _record_unknown(
@@ -184,6 +195,7 @@ def _find_semantic_debt(
                 known_terms,
                 f'ask in case "{case.name}"',
                 debt,
+                theory_symbols,
             )
     return tuple(dict.fromkeys(debt))
 
@@ -193,20 +205,29 @@ def _record_unknown(
     known_terms: set[str],
     context: str,
     debt: list[SemanticDebt],
+    theory: TheorySymbols,
 ) -> None:
-    for call in _predicate_calls(expression):
+    for call in _predicate_calls(expression, theory):
         if call.name not in known_terms:
             debt.append(SemanticDebt(call.name, context))
 
 
-def _predicate_calls(expression: Expression) -> tuple[PredicateCall, ...]:
+def _predicate_calls(
+    expression: Expression,
+    theory: TheorySymbols,
+) -> tuple[PredicateCall, ...]:
     if isinstance(expression, PredicateCall):
         return (expression,)
+    if isinstance(expression, SurfaceStatement):
+        try:
+            return (desugar_surface_statement(expression, theory),)
+        except DiagnosticError:
+            return ()
     if isinstance(expression, SomeExpression):
         return tuple(
             call
             for child in expression.body
-            for call in _predicate_calls(child)
+            for call in _predicate_calls(child, theory)
         )
     return ()
 
