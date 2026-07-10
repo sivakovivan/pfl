@@ -13,6 +13,7 @@ from pfl.engine import FactStore, compile_case_facts, run_inference
 from pfl.explain import format_explanation
 from pfl.parser import parse_document
 from pfl.query import QueryResult, evaluate_case_asks
+from pfl.reports import build_semantic_report, format_semantic_report
 from pfl.symbols import SymbolTable
 
 
@@ -37,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     explain.add_argument("file", type=Path)
     explain.set_defaults(handler=_explain_command)
+
+    report = commands.add_parser("report", help="print semantic reports")
+    report.add_argument("file", type=Path)
+    report.set_defaults(handler=_report_command)
     return parser
 
 
@@ -91,6 +96,16 @@ def _explain_command(args: argparse.Namespace) -> int:
             print(f"Result: {result.status.value}")
             print("\nExplanation:")
             print(format_explanation(result.predicate, facts))
+    return 0
+
+
+def _report_command(args: argparse.Namespace) -> int:
+    document, _ = _load_program(args.file)
+    for index, theory in enumerate(document.theories):
+        if index:
+            print()
+        report = build_semantic_report(document, theory.name)
+        print(format_semantic_report(report))
     return 0
 
 

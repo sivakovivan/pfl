@@ -114,3 +114,31 @@ def test_explain_command_shows_derivation(
     assert "Result: true" in output.out
     assert "derived by acknowledged" in output.out
     assert "acts(alice)\n      given in case" in output.out
+
+
+def test_report_command_prints_theory_structure(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    source = tmp_path / "report.pfl"
+    source.write_text(
+        """
+        theory ExampleTheory {
+            kind Subject
+            posit acts(actor: Subject)
+            derive acknowledged(actor: Subject):
+                acts(actor)
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    exit_code = main(["report", str(source)])
+
+    output = capsys.readouterr()
+    assert exit_code == 0
+    assert "Theory: ExampleTheory" in output.out
+    assert "- acts(actor: Subject)" in output.out
+    assert "- acknowledged(actor: Subject)" in output.out
+    assert "- acknowledged\n  depends on:\n  - acts" in output.out
+    assert "Semantic debt:\n- none" in output.out
