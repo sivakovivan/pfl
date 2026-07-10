@@ -84,3 +84,27 @@ def test_desugars_statement_through_theory_reads_templates() -> None:
     )
 
     assert call == PredicateCall("chooses", ("alice", "optionA"))
+
+
+def test_rejects_ambiguous_reads_templates() -> None:
+    parameters = (
+        ArgDecl("actor", "Subject"),
+        ArgDecl("option", "Option"),
+    )
+    theory = TheoryDecl(
+        "ExampleTheory",
+        posits=(
+            PositDecl("prefers", parameters, "{actor} likes {option}"),
+            PositDecl("favours", parameters, "{actor} likes {option}"),
+        ),
+    )
+    symbols = build_symbol_table(Document(theories=(theory,)))
+
+    with pytest.raises(DiagnosticError) as raised:
+        desugar_surface_statement(
+            SurfaceStatement("alice likes optionA"),
+            symbols.theories["ExampleTheory"],
+        )
+
+    assert raised.value.diagnostic.code is DiagnosticCode.AMBIGUOUS_READS
+    assert "prefers, favours" in raised.value.diagnostic.message

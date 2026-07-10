@@ -116,6 +116,15 @@ def desugar_surface_statement(
                 f'"{theory.declaration.name}".',
             )
         )
+    if len(matches) > 1:
+        names = ", ".join(call.name for call in matches)
+        raise DiagnosticError(
+            Diagnostic(
+                DiagnosticCode.AMBIGUOUS_READS,
+                f'Readable statement "{statement.text}" matches multiple '
+                f"terms: {names}.",
+            )
+        )
     return matches[0]
 
 
