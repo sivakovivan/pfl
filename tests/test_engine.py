@@ -101,3 +101,44 @@ def test_forward_chaining_repeats_until_fixed_point() -> None:
     run_inference(store, (second_rule, first_rule))
 
     assert Predicate("endorsed", ("alice",)) in store
+
+
+def test_forward_chaining_binds_existential_local_variable() -> None:
+    rule = Rule(
+        "avoidable_setback",
+        (
+            ArgDecl("P", "Subject"),
+            ArgDecl("Actor", "Subject"),
+            ArgDecl("A", "Option"),
+        ),
+        (
+            PredicatePattern("chooses", ("Actor", "A")),
+            PredicatePattern("available_to", ("B", "Actor")),
+            PredicatePattern("option_worse_for", ("P", "A", "B")),
+        ),
+        PredicatePattern("avoidable_setback", ("P", "Actor", "A")),
+        local_variables=(ArgDecl("B", "Option"),),
+    )
+    store = FactStore(
+        (
+            Fact(Predicate("chooses", ("alice", "take_medicine"))),
+            Fact(Predicate("available_to", ("leave_medicine", "alice"))),
+            Fact(
+                Predicate(
+                    "option_worse_for",
+                    ("bob", "take_medicine", "leave_medicine"),
+                )
+            ),
+        )
+    )
+
+    run_inference(store, (rule,))
+
+    conclusion = Predicate(
+        "avoidable_setback",
+        ("bob", "alice", "take_medicine"),
+    )
+    assert conclusion in store
+    fact = store.get(conclusion)
+    assert fact is not None and fact.derivation is not None
+    assert ("B", "leave_medicine") in fact.derivation.bindings

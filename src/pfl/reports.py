@@ -8,6 +8,7 @@ from pfl.ast_nodes import (
     Document,
     Expression,
     PredicateCall,
+    SomeExpression,
     SurfaceStatement,
     TheoryDecl,
 )
@@ -69,9 +70,9 @@ def build_semantic_report(document: Document, theory_name: str) -> SemanticRepor
                 derive.name,
                 tuple(
                     dict.fromkeys(
-                        expression.name
+                        call.name
                         for expression in derive.body
-                        if isinstance(expression, PredicateCall)
+                        for call in _predicate_calls(expression)
                     )
                 ),
             )
@@ -193,8 +194,21 @@ def _record_unknown(
     context: str,
     debt: list[SemanticDebt],
 ) -> None:
-    if isinstance(expression, PredicateCall) and expression.name not in known_terms:
-        debt.append(SemanticDebt(expression.name, context))
+    for call in _predicate_calls(expression):
+        if call.name not in known_terms:
+            debt.append(SemanticDebt(call.name, context))
+
+
+def _predicate_calls(expression: Expression) -> tuple[PredicateCall, ...]:
+    if isinstance(expression, PredicateCall):
+        return (expression,)
+    if isinstance(expression, SomeExpression):
+        return tuple(
+            call
+            for child in expression.body
+            for call in _predicate_calls(child)
+        )
+    return ()
 
 
 def _format_semantic_debt(debt: tuple[SemanticDebt, ...]) -> str:

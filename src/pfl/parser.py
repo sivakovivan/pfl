@@ -15,6 +15,7 @@ from pfl.ast_nodes import (
     LetDecl,
     PositDecl,
     PredicateCall,
+    SomeExpression,
     SurfaceStatement,
     TheoryDecl,
 )
@@ -34,21 +35,30 @@ class _Token:
     kind: str
     value: str
     line: int
+    column: int
 
 
 def _tokenize(source: str) -> tuple[_Token, ...]:
     tokens: list[_Token] = []
     line = 1
+    column = 1
     for match in _TOKEN_PATTERN.finditer(source):
         kind = match.lastgroup
+        value = match.group()
         if kind == "whitespace":
-            line += match.group().count("\n")
+            newline_count = value.count("\n")
+            if newline_count:
+                line += newline_count
+                column = len(value.rsplit("\n", 1)[1]) + 1
+            else:
+                column += len(value)
             continue
         if kind == "invalid":
-            raise ValueError(f"Unexpected character {match.group()!r}")
+            raise ValueError(f"Unexpected character {value!r}")
         if kind is None:
             raise AssertionError("Token pattern produced an unclassified match")
-        tokens.append(_Token(kind, match.group(), line))
+        tokens.append(_Token(kind, value, line, column))
+        column += len(value)
     return tuple(tokens)
 
 
@@ -162,7 +172,7 @@ class _Parser:
         return value
 
     def parse_derive(self) -> DeriveDecl:
-        self.expect_value("derive")
+        derive_token = self.expect_value("derive")
         name = self.expect_kind("identifier").value
         self.expect_value("(")
 
@@ -178,13 +188,39 @@ class _Parser:
 
         body: list[Expression] = []
         declaration_starters = {"kind", "posit", "derive", "}"}
-        while self.current_token().value not in declaration_starters:
-            if self.peek_value(1) == "(":
+        while (
+            self.current_token().value not in declaration_starters
+            and self.current_token().column > derive_token.column
+        ):
+            if self.current_token().value == "some":
+                body.append(self.parse_some())
+            elif self.peek_value(1) == "(":
                 body.append(self.parse_predicate_call())
             else:
                 body.append(self.parse_surface_statement())
 
         return DeriveDecl(name, tuple(args), tuple(body))
+
+    def parse_some(self) -> SomeExpression:
+        some_token = self.expect_value("some")
+        var_name = self.expect_kind("identifier").value
+        self.expect_value(":")
+        var_kind = self.expect_kind("identifier").value
+        self.expect_value("where")
+        self.expect_value(":")
+
+        body: list[Expression] = []
+        while (
+            self.current_token().value != "}"
+            and self.current_token().column > some_token.column
+        ):
+            if self.peek_value(1) == "(":
+                body.append(self.parse_predicate_call())
+            else:
+                body.append(self.parse_surface_statement())
+        if not body:
+            raise ValueError("A some block must contain at least one expression")
+        return SomeExpression(var_name, var_kind, tuple(body))
 
     def parse_arg_decl(self) -> ArgDecl:
         name = self.expect_kind("identifier").value

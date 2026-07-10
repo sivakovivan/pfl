@@ -1,6 +1,14 @@
 """Semantic validation for PFL documents."""
 
-from pfl.ast_nodes import ArgDecl, CaseDecl, Document, PredicateCall, SurfaceStatement
+from pfl.ast_nodes import (
+    ArgDecl,
+    CaseDecl,
+    Document,
+    Expression,
+    PredicateCall,
+    SomeExpression,
+    SurfaceStatement,
+)
 from pfl.canonicalize import canonicalize_predicate, resolve_term
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.desugar import desugar_surface_statement
@@ -120,40 +128,70 @@ def _check_term_kinds(theory: TheorySymbols) -> None:
 
 def _check_derive_variable_scopes(theory: TheorySymbols) -> None:
     for derive in theory.derives.values():
-        parameters = {arg.name for arg in derive.args}
-        parameter_kinds = {arg.name: arg.kind for arg in derive.args}
-        for expression in derive.body:
-            was_surface = isinstance(expression, SurfaceStatement)
-            if was_surface:
-                expression = desugar_surface_statement(expression, theory)
-            if not isinstance(expression, PredicateCall):
-                continue
-            for variable in expression.args:
-                if variable not in parameters:
+        scope = {arg.name: arg.kind for arg in derive.args}
+        _check_derive_expressions(derive.name, derive.body, theory, scope)
+
+
+def _check_derive_expressions(
+    derive_name: str,
+    expressions: tuple[Expression, ...],
+    theory: TheorySymbols,
+    scope: dict[str, str],
+) -> None:
+    for expression in expressions:
+        if isinstance(expression, SomeExpression):
+            if expression.var_kind not in theory.kinds:
+                raise DiagnosticError(
+                    Diagnostic(
+                        DiagnosticCode.UNKNOWN_KIND,
+                        f'Unknown kind "{expression.var_kind}" for some '
+                        f'variable "{expression.var_name}".',
+                    )
+                )
+            if expression.var_name in scope:
+                raise DiagnosticError(
+                    Diagnostic(
+                        DiagnosticCode.MALFORMED_DERIVE,
+                        f'Some variable "{expression.var_name}" is already '
+                        f'declared in derive "{derive_name}".',
+                    )
+                )
+            local_scope = dict(scope)
+            local_scope[expression.var_name] = expression.var_kind
+            _check_derive_expressions(
+                derive_name,
+                expression.body,
+                theory,
+                local_scope,
+            )
+            continue
+
+        was_surface = isinstance(expression, SurfaceStatement)
+        if was_surface:
+            expression = desugar_surface_statement(expression, theory)
+        if not isinstance(expression, PredicateCall):
+            continue
+        for variable in expression.args:
+            if variable not in scope:
+                raise DiagnosticError(
+                    Diagnostic(
+                        DiagnosticCode.MALFORMED_DERIVE,
+                        f'Variable "{variable}" in derive "{derive_name}" '
+                        "is not declared in its header or local some block.",
+                    )
+                )
+        if was_surface:
+            term = resolve_term(theory, expression.name)
+            for variable, argument in zip(expression.args, term.args, strict=True):
+                if scope[variable] != argument.kind:
                     raise DiagnosticError(
                         Diagnostic(
-                            DiagnosticCode.MALFORMED_DERIVE,
-                            f'Variable "{variable}" in derive "{derive.name}" '
-                            "is not declared in its header.",
+                            DiagnosticCode.TYPE_MISMATCH,
+                            f'Variable "{variable}" has kind '
+                            f'"{scope[variable]}", but readable term '
+                            f'"{expression.name}" expects "{argument.kind}".',
                         )
                     )
-            if was_surface:
-                term = resolve_term(theory, expression.name)
-                for variable, argument in zip(
-                    expression.args,
-                    term.args,
-                    strict=True,
-                ):
-                    if parameter_kinds[variable] != argument.kind:
-                        raise DiagnosticError(
-                            Diagnostic(
-                                DiagnosticCode.TYPE_MISMATCH,
-                                f'Variable "{variable}" has kind '
-                                f'"{parameter_kinds[variable]}", but readable '
-                                f'term "{expression.name}" expects '
-                                f'"{argument.kind}".',
-                            )
-                        )
 
 
 def _require_known_kind(

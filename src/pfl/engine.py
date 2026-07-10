@@ -78,7 +78,8 @@ def run_inference(
     for _ in range(max_iterations):
         added_fact = False
         for rule in compiled_rules:
-            variables = {parameter.name for parameter in rule.parameters}
+            rule_variables = (*rule.parameters, *rule.local_variables)
+            variables = {variable.name for variable in rule_variables}
             for bindings in match_rule_body(rule, facts):
                 predicate = _instantiate(rule.head, variables, bindings)
                 premises = tuple(
@@ -86,9 +87,9 @@ def run_inference(
                     for pattern in rule.body
                 )
                 ordered_bindings = tuple(
-                    (parameter.name, bindings[parameter.name])
-                    for parameter in rule.parameters
-                    if parameter.name in bindings
+                    (variable.name, bindings[variable.name])
+                    for variable in rule_variables
+                    if variable.name in bindings
                 )
                 derivation = Derivation(rule.name, premises, ordered_bindings)
                 added_fact = facts.add(Fact(predicate, derivation)) or added_fact

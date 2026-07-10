@@ -33,6 +33,7 @@ class Rule:
     parameters: tuple[ArgDecl, ...]
     body: tuple[PredicatePattern, ...]
     head: PredicatePattern
+    local_variables: tuple[ArgDecl, ...] = ()
 
     def __str__(self) -> str:
         premises = ", ".join(str(predicate) for predicate in self.body)

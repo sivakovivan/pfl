@@ -179,3 +179,25 @@ def test_parses_surface_statements_in_derives_and_cases() -> None:
     case_facts = document.cases[0].facts
     assert case_facts[0].text == "alice prefers optionA"
     assert case_facts[1].name == "chooses"
+
+
+def test_parses_simple_some_block() -> None:
+    document = parse_document(
+        """
+        theory MinimalPreferenceEthics {
+            derive avoidable_setback(P: Subject, Actor: Subject, A: Option):
+                chooses(Actor, A)
+                some B: Option where:
+                    available_to(B, Actor)
+                    option_worse_for(P, A, B)
+        }
+        """
+    )
+
+    some = document.theories[0].derives[0].body[1]
+    assert some.var_name == "B"
+    assert some.var_kind == "Option"
+    assert [expression.name for expression in some.body] == [
+        "available_to",
+        "option_worse_for",
+    ]

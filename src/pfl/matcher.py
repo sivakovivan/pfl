@@ -40,7 +40,9 @@ def match_predicate(
 def match_rule_body(rule: Rule, facts: "FactStore") -> tuple[Bindings, ...]:
     """Return every substitution satisfying all predicates in a rule body."""
 
-    variables = {parameter.name for parameter in rule.parameters}
+    variables = {
+        variable.name for variable in (*rule.parameters, *rule.local_variables)
+    }
     candidates: list[Bindings] = [{}]
 
     for pattern in rule.body:
