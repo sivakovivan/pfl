@@ -12,9 +12,7 @@ def test_explains_derived_fact_recursively() -> None:
         (prefers, chooses),
         (("actor", "alice"), ("option", "optionA")),
     )
-    facts = FactStore(
-        (Fact(prefers), Fact(chooses), Fact(conclusion, derivation))
-    )
+    facts = FactStore((Fact(prefers), Fact(chooses), Fact(conclusion, derivation)))
 
     explanation = format_explanation(conclusion, facts)
 

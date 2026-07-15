@@ -45,9 +45,7 @@ def test_accepts_known_kinds_in_term_signatures() -> None:
         ),
         TheoryDecl(
             "ExampleTheory",
-            derives=(
-                DeriveDecl("acts", (ArgDecl("actor", "Subject"),), ()),
-            ),
+            derives=(DeriveDecl("acts", (ArgDecl("actor", "Subject"),), ()),),
         ),
     ],
 )

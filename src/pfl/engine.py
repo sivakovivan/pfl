@@ -83,8 +83,7 @@ def run_inference(
             for bindings in match_rule_body(rule, facts):
                 predicate = _instantiate(rule.head, variables, bindings)
                 premises = tuple(
-                    _instantiate(pattern, variables, bindings)
-                    for pattern in rule.body
+                    _instantiate(pattern, variables, bindings) for pattern in rule.body
                 )
                 ordered_bindings = tuple(
                     (variable.name, bindings[variable.name])

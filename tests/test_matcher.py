@@ -57,9 +57,7 @@ def test_matches_all_rule_premises() -> None:
         )
     )
 
-    assert match_rule_body(rule, store) == (
-        {"actor": "alice", "option": "optionA"},
-    )
+    assert match_rule_body(rule, store) == ({"actor": "alice", "option": "optionA"},)
 
 
 def test_rule_body_requires_every_premise() -> None:

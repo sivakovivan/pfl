@@ -48,9 +48,7 @@ def compile_derive(derive: DeriveDecl, theory: TheorySymbols) -> Rule:
 
 
 def compile_theory_rules(theory: TheorySymbols) -> tuple[Rule, ...]:
-    return tuple(
-        compile_derive(derive, theory) for derive in theory.derives.values()
-    )
+    return tuple(compile_derive(derive, theory) for derive in theory.derives.values())
 
 
 def _compile_expression(

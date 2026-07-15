@@ -58,15 +58,15 @@ def build_semantic_report(document: Document, theory_name: str) -> SemanticRepor
     return SemanticReport(
         theory_name=theory.name,
         kinds=tuple(kind.name for kind in theory.kinds),
-        posits=tuple(_format_signature(posit.name, posit.args) for posit in theory.posits),
+        posits=tuple(
+            _format_signature(posit.name, posit.args) for posit in theory.posits
+        ),
         derives=tuple(
             _format_signature(derive.name, derive.args) for derive in theory.derives
         ),
         cases=tuple(f"{case.name} under {case.theory_name}" for case in cases),
         asks=tuple(
-            _format_expression(ask.expression)
-            for case in cases
-            for ask in case.asks
+            _format_expression(ask.expression) for case in cases for ask in case.asks
         ),
         dependencies=tuple(
             DerivedDependencies(

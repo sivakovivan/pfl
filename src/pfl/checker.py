@@ -36,8 +36,7 @@ def _check_case_theories(document: Document, symbols: SymbolTable) -> None:
         raise DiagnosticError(
             Diagnostic(
                 DiagnosticCode.UNKNOWN_THEORY,
-                f'Case "{case.name}" references unknown theory '
-                f'"{case.theory_name}".',
+                f'Case "{case.name}" references unknown theory "{case.theory_name}".',
             )
         )
 

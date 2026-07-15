@@ -32,9 +32,7 @@ def test_builds_basic_semantic_report() -> None:
     case = CaseDecl(
         "SpecificChoiceCase",
         "ExampleTheory",
-        asks=(
-            AskDecl(PredicateCall("favourable_outcome", ("alice", "optionA"))),
-        ),
+        asks=(AskDecl(PredicateCall("favourable_outcome", ("alice", "optionA"))),),
     )
 
     report = build_semantic_report(
@@ -91,7 +89,7 @@ def test_reports_unknown_terms_as_semantic_debt() -> None:
     diagnostics = semantic_debt_diagnostics(report)
 
     assert report.semantic_debt[0].term_name == "desires"
-    assert "- desires (derive \"satisfied\")" in format_semantic_report(report)
+    assert '- desires (derive "satisfied")' in format_semantic_report(report)
     assert diagnostics[0].code is DiagnosticCode.SEMANTIC_DEBT
     assert diagnostics[0].severity is Severity.WARNING
 

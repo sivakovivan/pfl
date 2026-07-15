@@ -52,12 +52,12 @@ def compile_reads_template(posit: PositDecl) -> ReadsMatcher:
     if missing:
         raise _malformed_reads(
             posit,
-            f'missing placeholder(s): {", ".join(missing)}',
+            f"missing placeholder(s): {', '.join(missing)}",
         )
     if duplicates:
         raise _malformed_reads(
             posit,
-            f'duplicate placeholder(s): {", ".join(duplicates)}',
+            f"duplicate placeholder(s): {', '.join(duplicates)}",
         )
     return ReadsMatcher(posit.name, argument_names, tuple(tokens))
 
