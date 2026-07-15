@@ -12,6 +12,7 @@ pfl = "pfl.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
+    "ruff>=0.15.22",
 ]
 
 [build-system]
