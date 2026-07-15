@@ -12,13 +12,13 @@ from pfl.ast_nodes import (
     SurfaceStatement,
     TheoryDecl,
 )
+from pfl.desugar import desugar_surface_statement
 from pfl.diagnostics import (
     Diagnostic,
     DiagnosticCode,
     DiagnosticError,
     Severity,
 )
-from pfl.desugar import desugar_surface_statement
 from pfl.symbols import TheorySymbols, build_symbol_table
 
 

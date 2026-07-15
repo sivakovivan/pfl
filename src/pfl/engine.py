@@ -4,8 +4,8 @@ from collections.abc import Iterable, Iterator
 
 from pfl.ast_nodes import CaseDecl, PredicateCall, SurfaceStatement
 from pfl.canonicalize import canonicalize_predicate
-from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.desugar import desugar_surface_statement
+from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.ir import Derivation, Fact, Predicate, PredicatePattern, Rule
 from pfl.matcher import Bindings, match_rule_body
 from pfl.symbols import TheorySymbols

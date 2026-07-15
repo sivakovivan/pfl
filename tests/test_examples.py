@@ -2,7 +2,6 @@ from pathlib import Path
 
 from pfl.cli import main
 
-
 EXAMPLES = Path(__file__).parents[1] / "examples"
 
 

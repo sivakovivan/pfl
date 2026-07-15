@@ -1,9 +1,9 @@
 """Command-line interface for the PFL interpreter."""
 
 import argparse
+import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
-import sys
 
 from pfl.ast_nodes import CaseDecl, Document, PredicateCall
 from pfl.canonicalize import canonicalize_predicate

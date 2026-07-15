@@ -10,8 +10,8 @@ from pfl.ast_nodes import (
     SurfaceStatement,
 )
 from pfl.canonicalize import canonicalize_predicate, resolve_term
-from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.desugar import desugar_surface_statement
+from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.symbols import SymbolTable, TheorySymbols, build_symbol_table
 
 

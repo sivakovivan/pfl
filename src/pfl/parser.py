@@ -1,8 +1,8 @@
 """Parser entrypoint for PFL source text."""
 
 import ast
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from pfl.ast_nodes import (
     ArgDecl,
@@ -19,7 +19,6 @@ from pfl.ast_nodes import (
     SurfaceStatement,
     TheoryDecl,
 )
-
 
 _TOKEN_PATTERN = re.compile(
     r"(?P<whitespace>\s+)"

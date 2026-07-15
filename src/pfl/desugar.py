@@ -1,12 +1,11 @@
 """Desugaring of readable PFL statements into canonical calls."""
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from pfl.ast_nodes import PositDecl, PredicateCall, SurfaceStatement
 from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.symbols import TheorySymbols
-
 
 _PLACEHOLDER = re.compile(r"^\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 

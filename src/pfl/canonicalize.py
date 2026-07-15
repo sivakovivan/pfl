@@ -7,7 +7,6 @@ from pfl.diagnostics import Diagnostic, DiagnosticCode, DiagnosticError
 from pfl.ir import Predicate, PredicatePattern
 from pfl.symbols import TheorySymbols
 
-
 TermDecl: TypeAlias = PositDecl | DeriveDecl
 
 
