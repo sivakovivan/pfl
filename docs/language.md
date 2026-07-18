@@ -28,14 +28,14 @@ Predicate calls use canonical positional form:
 chooses(alice, optionA)
 ```
 
-A posit may define a deterministic token template:
+A posit may define a `reads` template for a more readable surface syntax:
 
 ```pfl
 posit chooses(actor: Subject, option: Option)
     reads "{actor} chooses {option}"
 ```
 
-The corresponding readable statement is equivalent to the canonical call:
+The readable statement is then equivalent to the call:
 
 ```pfl
 alice chooses optionA
@@ -43,12 +43,11 @@ alice chooses optionA
 
 Every placeholder must correspond to exactly one declared posit argument.
 Literal tokens match exactly. If multiple templates match one statement, PFL
-reports `PFL006` rather than guessing.
+reports `PFL006`.
 
 ## Derivation and existential variables
 
-Each `derive` block is a sufficient forward-chaining rule. Body lines are
-conjoined. A simple existential witness can be introduced with `some`:
+Each `derive` block is a sufficient forward-chaining rule. A simple existential witness can be introduced with `some`:
 
 ```pfl
 derive avoidable_setback(P: Subject, Actor: Subject, A: Option):
@@ -58,9 +57,6 @@ derive avoidable_setback(P: Subject, Actor: Subject, A: Option):
         option_worse_for(P, A, B)
 ```
 
-The witness must match declared facts or derived predicates, but does not
-become an argument of the rule head.
-
 ## Ask results
 
 PFL v0.1 returns:
@@ -69,10 +65,3 @@ PFL v0.1 returns:
 - `unknown` when the term is valid but no fact or rule derives that instance.
 
 Unknown term names are semantic errors, not `unknown` query results.
-
-## Non-goals
-
-PFL v0.1 does not include imports, packages, natural-language parsing,
-defeasible reasoning, modal or deontic logic, external solver backends, or a
-web editor. Inference is deterministic and symbolic; it does not use an LLM as
-a reasoning engine.
