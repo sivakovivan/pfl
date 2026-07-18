@@ -1,34 +1,20 @@
 # PFL
 
-PFL (Philosophy Formalization Language) is a small, deterministic language for
-expressing philosophical theories, applying cases to them, and explaining what
-follows. Its v0.1 interpreter is written in Python and does not use an LLM as a
-reasoning engine.
+PFL (Philosophy Formalization Language) is a meta-language for explicitly, deterministically and fundamentally expressing philosophical theories with associated primitives, and testing them against specific cases.
 
-The core workflow is:
+The deterministic philosophy flows as follows:
 
 ```text
 kind -> posit -> derive -> case -> ask -> result -> explanation -> report
 ```
 
-## Requirements and installation
-
-PFL requires Python 3.13 or newer. Create a virtual environment and install the
-project in editable mode:
+## Installation
 
 ```bash
-python -m venv .venv
-python -m pip install --editable .
-python -m pip install pytest
-```
-
-With `uv`, the equivalent development setup is:
-
-```bash
+git clone https://github.com/sivakovivan/pfl.git
+cd pfl
 uv sync
 ```
-
-Both approaches install the `pfl` command.
 
 ## Quick start
 
@@ -59,6 +45,7 @@ This evaluates `MedicineCase` under `MinimalPreferenceEthics` and derives
 ## Commands
 
 ```text
+pfl -h               Show this help message.
 pfl check <file>     Parse and semantically validate a PFL file.
 pfl run <file>       Run every case and print true/unknown ask results.
 pfl explain <file>   Run cases and recursively explain their results.
@@ -103,28 +90,8 @@ See [the language notes](docs/language.md) and the files in
 
 ## Development
 
-Run the full test suite from the repository root:
+Run the unit tests from the repository root:
 
 ```bash
-pytest
+uv run pytest
 ```
-
-The implementation uses a `src/` package layout. Major components are kept in
-focused modules for parsing, semantic checks, desugaring, compilation,
-inference, explanations, and reports.
-
-## v0.1 limitations
-
-PFL v0.1 intentionally supports only deterministic forward chaining with
-`true` and `unknown` query results. It does not include:
-
-- explicit negation or `false`/`conflict` results;
-- imports, packages, or theory inheritance;
-- `or`, `forall`, defeasible, modal, or deontic reasoning;
-- unrestricted recursion or function symbols;
-- general natural-language parsing;
-- external solver or LLM reasoning backends;
-- a web editor.
-
-These are later-version concerns. v0.1 focuses on a transparent,
-human-maintainable `posit -> derive -> case -> ask` loop.
